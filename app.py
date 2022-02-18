@@ -1,6 +1,6 @@
 import email
 from flask import Flask, jsonify,redirect,url_for,render_template,request
-from flask_login import login_user,logout_user,current_user,UserMixin,LoginManager
+from flask_login import login_required, login_user,logout_user,current_user,UserMixin,LoginManager
 from flask_sqlalchemy import SQLAlchemy
 from numpy import product
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -11,6 +11,7 @@ app=Flask(__name__)
 api = Api(app)
 
 
+# app.config['SQLALCHEMY_DATABASE_URI']= 'mysql://sql6473290:cyQZPPevB6@sql6.freemysqlhosting.net/sql6473290'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///market.db'
 db = SQLAlchemy(app)
 app.secret_key = "this is my secrete key"
@@ -26,7 +27,7 @@ class Users(db.Model, UserMixin):
                          nullable=False,
                          unique=False)
     email = db.Column(db.String(40),
-                      unique=True,
+                      unique=False,
                       nullable=False)
     password = db.Column(db.String(200),
                          primary_key=False,
@@ -72,9 +73,9 @@ bcrypt = Bcrypt(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
 @login_manager.user_loader
-def user_loader(user_id):
+def user_loader(users_id):
     #TODO change here
-    return Users.query.get(user_id)
+    return Users.query.get(users_id)
 
 data = {
     "username":"uname",
@@ -97,12 +98,38 @@ class Login(Resource):
 
 api.add_resource(Login,"/login")
 
+class HomePage(Resource):
+    def get(self):
+        data = Users.query.all()
+        fdata = []
+        for user in data:
+            # data['username'] = user.username
+            # data['password'] = user.password
+            # data['email'] = user.email
+            # data['phone_number'] = user.phone_number
+            username = user.username
+            gdata = {
+                    username:{
+                        "email":user.email,
+                        "phone_number":user.phone_number
+                        }
+            }
+            fdata.append(gdata)
+
+        return fdata
+
+api.add_resource(HomePage,"/logout")          
+
+
 db.create_all()
+
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
+    if not current_user.is_authenticated:
+        return {"message":"not registered"}
     return render_template('index.html')
 
 if __name__ == '__main__':
     #DEBUG is SET to TRUE. CHANGE FOR PROD
-    app.run()
+    app.run(debug=True)
